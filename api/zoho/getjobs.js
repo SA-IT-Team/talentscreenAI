@@ -11,37 +11,54 @@ export default async function handler(req, res) {
     const start = (page - 1) * per_page;
     const end = start + parseInt(per_page);
 
-    const { data: tokens, error } = await supabase
+    // 1. Get latest access token
+    const { data: tokens, error: tokenError } = await supabase
       .from('zoho_tokens')
       .select('access_token')
       .order('created_at', { ascending: false })
       .limit(1);
 
-    if (error || !tokens || tokens.length === 0) {
-      console.warn('[Get Jobs] No valid access token found');
+    if (tokenError || !tokens || tokens.length === 0) {
+      console.error('[GetJobs] Failed to retrieve access token:', tokenError);
       return res.status(401).json({ error: 'Access token missing or invalid' });
     }
 
     const accessToken = tokens[0].access_token;
 
-    const jobsRes = await fetch(`https://recruit.zoho.in/recruit/v2/JobOpenings?per_page=200&page=1`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Zoho-oauthtoken ${accessToken}`
-      }
-    });
+    // 2. Loop through Zoho pages
+    const allJobs = [];
+    let currentPage = 1;
+    let moreRecords = true;
 
-    if (!jobsRes.ok) {
-      const errorText = await jobsRes.text();
-      console.error('[Get Jobs] Zoho API error:', errorText);
-      return res.status(502).json({ error: 'Failed to fetch jobs from Zoho' });
+    while (moreRecords) {
+      const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?per_page=200&page=${currentPage}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Zoho-oauthtoken ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error(`[Zoho API error] Page ${currentPage}:`, err);
+        return res.status(502).json({ error: 'Failed to fetch jobs from Zoho', details: err });
+      }
+
+      const json = await response.json();
+      const jobsPage = json.data || [];
+
+      allJobs.push(...jobsPage);
+      moreRecords = json.info?.more_records || false;
+      currentPage++;
     }
 
-    const jobsData = await jobsRes.json();
+    // 3. Filter & paginate
+    const inProgress = allJobs.filter(job => job.Job_Opening_Status === 'In-progress');
+    const paginated = inProgress.slice(start, end);
+    const hasMore = inProgress.length > end;
 
-    const filtered = jobsData.data?.filter(job => job.Job_Opening_Status === 'In-progress') || [];
-    const paginated = filtered.slice(start, end);
-    const hasMore = filtered.length > end;
+    console.log(`[GetJobs] Total: ${allJobs.length}, In-progress: ${inProgress.length}`);
 
     return res.status(200).json({
       count: paginated.length,
@@ -50,8 +67,9 @@ export default async function handler(req, res) {
       perPage: parseInt(per_page),
       data: paginated
     });
+
   } catch (error) {
-    console.error('[Get Jobs] Exception:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('[GetJobs] Unhandled Error:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }
