@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const accessToken = tokens[0].access_token;
 
     // 🌐 Fetch only the first page (200 records max)
-    const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?page=1&per_page=200`;
+    const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?page=1&per_page=50`;
 
     const response = await fetch(url, {
       method: 'GET',
