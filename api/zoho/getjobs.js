@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const accessToken = tokens[0].access_token;
 
     // 🌐 Fetch only the first page (200 records max)
-    const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?page=1&per_page=5`;
+    const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?page=1&per_page=200`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -41,14 +41,46 @@ export default async function handler(req, res) {
     const json = await response.json();
     const allJobs = json?.data || [];
 
+    // 📆 Calculate date 60 days ago
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
     // ✅ Filter jobs with status = "In-progress"
-    const inProgressJobs = allJobs.filter(
-      job => job.Job_Opening_Status === 'In-progress'
-    );
+    const filteredJobs = allJobs
+      .filter((job) => {
+        try {
+          if (job.Job_Opening_Status !== "In-progress") return false;
 
-    console.log(`[GetJobs] Fetched: ${allJobs.length}, In-progress: ${inProgressJobs.length}`);
+          const createdDate = new Date(job.Created_Time);
+          if (isNaN(createdDate.getTime())) {
+            console.warn(
+              "[GetJobs] Skipping job with invalid Created_Time:",
+              job.Job_Opening_ID
+            );
+            return false;
+          }
 
-    return res.status(200).json({ data: inProgressJobs });
+          return createdDate >= sixtyDaysAgo;
+        } catch (err) {
+          console.warn(
+            "[GetJobs] Error filtering job:",
+            job?.Job_Opening_ID,
+            err.message
+          );
+          return false;
+        }
+      })
+      .map((job) => ({
+        Job_Opening_ID: job.Job_Opening_ID || "",
+        Job_Description: job.Job_Description || "",
+        Posting_Title: job.Job_Opening_Name || "",
+        Location: job.City || "",
+      }));
+
+
+    console.log(`[GetJobs] Fetched: ${allJobs.length}, In-progress: ${filteredJobs.length}`);
+
+    return res.status(200).json({ data: filteredJobs });
 
   } catch (error) {
     console.error('[GetJobs] Exception:', error);
