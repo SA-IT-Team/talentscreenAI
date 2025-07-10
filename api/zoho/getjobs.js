@@ -72,7 +72,7 @@ export default async function handler(req, res) {
       })
       .map((job) => ({
         Job_Opening_ID: job.Job_Opening_ID || "",
-        Job_Description: job.Job_Description || "",
+        // Job_Description: job.Job_Description || "",
         Posting_Title: job.Job_Opening_Name || "",
         Location: job.City || "",
       }));
