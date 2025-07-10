@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const accessToken = tokens[0].access_token;
 
     // 🌐 Fetch only the first page (200 records max)
-    const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?page=1&per_page=200`;
+    const url = `https://recruit.zoho.in/recruit/v2/JobOpenings?page=1&per_page=50`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
       })
       .map((job) => ({
         Job_Opening_ID: job.Job_Opening_ID || "",
-        // Job_Description: job.Job_Description || "",
+        Job_Description: job.Job_Description || "",
         Posting_Title: job.Job_Opening_Name || "",
         Location: job.City || "",
       }));
