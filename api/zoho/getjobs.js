@@ -42,8 +42,8 @@ export default async function handler(req, res) {
     const allJobs = json?.data || [];
 
     // 📆 Calculate date 60 days ago
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // ✅ Filter jobs with status = "In-progress"
     const filteredJobs = allJobs
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
             return false;
           }
 
-          return createdDate >= sixtyDaysAgo;
+          return createdDate >= thirtyDaysAgo;
         } catch (err) {
           console.warn(
             "[GetJobs] Error filtering job:",
