@@ -75,6 +75,7 @@ export default async function handler(req, res) {
         Job_Description: job.Job_Description || "",
         Posting_Title: job.Job_Opening_Name || "",
         Location: job.City || "",
+        CreatedDate:job.Created_Time || ""
       }));
 
 
